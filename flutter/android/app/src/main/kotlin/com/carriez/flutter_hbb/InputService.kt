@@ -727,14 +727,29 @@ class InputService : AccessibilityService() {
     }
 
     private fun clickFocusedTvNode() {
-        var node = focusedTvNode()
-        while (node != null) {
-            if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                return
-            }
-            node = node.parent
+        val node = focusedTvNode()
+        if (node == null) {
+            Log.d(logTag, "tv enter: no focused node")
+            return
         }
-        focusedTvNode()?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        val r = Rect()
+        node.getBoundsInScreen(r)
+        Log.d(logTag, "tv enter: ${node.className} clickable=${node.isClickable} bounds=$r")
+        // Only click the highlighted element itself: clicking a clickable parent
+        // (a whole row or page) usually does nothing in TV launchers.
+        if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            return
+        }
+        // Not clickable via accessibility: tap the middle of it instead.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !r.isEmpty) {
+            val path = Path()
+            path.moveTo(r.exactCenterX(), r.exactCenterY())
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
+                .build()
+            val sent = dispatchGesture(gesture, null, null)
+            Log.d(logTag, "tv enter: tap fallback sent=$sent")
+        }
     }
 
     private fun isEditingText(): Boolean {
