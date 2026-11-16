@@ -153,6 +153,15 @@ class InputService : AccessibilityService() {
             return
         }
 
+        // short click on TV, no touch stroke started yet
+        if (mask == LEFT_UP && leftIsDown && isWaitingLongPress && stroke == null &&
+            tryClickTvNodeAt(mouseX, mouseY)) {
+            leftIsDown = false
+            isWaitingLongPress = false
+            touchPath.reset()
+            return
+        }
+
         // left down, was down
         if (leftIsDown) {
             continueGesture(mouseX, mouseY)
@@ -474,6 +483,8 @@ class InputService : AccessibilityService() {
                 return
             } else if (tryHandlePowerKeyEvent(event)) {
                 return
+            } else if (tryHandleTvNavKeyEvent(event)) {
+                return
             }
         }
 
@@ -540,6 +551,72 @@ class InputService : AccessibilityService() {
                 return false
             }
         }
+    }
+
+    private val isTv: Boolean by lazy {
+        packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+    }
+
+    // TV launchers and apps ignore touch and have no focused text field to take
+    // key events, so remote keys must be replayed as D-pad global actions (API 33+).
+    private fun tryHandleTvNavKeyEvent(event: KeyEventAndroid): Boolean {
+        if (!isTv || Build.VERSION.SDK_INT < 33) {
+            return false
+        }
+        val action = when (event.keyCode) {
+            KeyEventAndroid.KEYCODE_DPAD_UP -> GLOBAL_ACTION_DPAD_UP
+            KeyEventAndroid.KEYCODE_DPAD_DOWN -> GLOBAL_ACTION_DPAD_DOWN
+            KeyEventAndroid.KEYCODE_DPAD_LEFT -> GLOBAL_ACTION_DPAD_LEFT
+            KeyEventAndroid.KEYCODE_DPAD_RIGHT -> GLOBAL_ACTION_DPAD_RIGHT
+            KeyEventAndroid.KEYCODE_ENTER,
+            KeyEventAndroid.KEYCODE_NUMPAD_ENTER,
+            KeyEventAndroid.KEYCODE_DPAD_CENTER -> GLOBAL_ACTION_DPAD_CENTER
+            KeyEventAndroid.KEYCODE_ESCAPE,
+            KeyEventAndroid.KEYCODE_BACK -> GLOBAL_ACTION_BACK
+            KeyEventAndroid.KEYCODE_MOVE_HOME,
+            KeyEventAndroid.KEYCODE_HOME -> GLOBAL_ACTION_HOME
+            else -> return false
+        }
+        if (action != GLOBAL_ACTION_BACK && isEditingText()) {
+            return false
+        }
+        if (event.action == KeyEventAndroid.ACTION_DOWN) {
+            performGlobalAction(action)
+        }
+        return true
+    }
+
+    private fun isEditingText(): Boolean {
+        return findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
+    }
+
+    // On TV a mouse click is delivered to the UI element under the pointer,
+    // since most TV apps ignore injected touches.
+    private fun tryClickTvNodeAt(x: Int, y: Int): Boolean {
+        if (!isTv) {
+            return false
+        }
+        val root = rootInActiveWindow ?: return false
+        var target: AccessibilityNodeInfo? = null
+        val bounds = Rect()
+        val queue = LinkedList<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.poll() ?: continue
+            node.getBoundsInScreen(bounds)
+            if (!node.isVisibleToUser || !bounds.contains(x, y)) {
+                continue
+            }
+            if (node.isClickable || node.isFocusable) {
+                target = node
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        val node = target ?: return false
+        node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
     private fun tryHandlePowerKeyEvent(event: KeyEventAndroid): Boolean {
