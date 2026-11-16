@@ -554,8 +554,25 @@ class InputService : AccessibilityService() {
         }
     }
 
+    // Many Android TV boxes (e.g. Android 7 Amlogic boxes) don't declare leanback
+    // and even claim a touchscreen, so also look at UI mode and the TV settings app.
+    // Override over ADB: settings put global rustdesk_tv_mode 1 (or 0).
     private val isTv: Boolean by lazy {
-        packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+        val forced = try {
+            android.provider.Settings.Global.getInt(contentResolver, "rustdesk_tv_mode", -1)
+        } catch (e: Exception) { -1 }
+        if (forced >= 0) return@lazy forced == 1
+        val pm = packageManager
+        if (pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) return@lazy true
+        val ui = getSystemService(android.content.Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+        if (ui?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) return@lazy true
+        val leanbackHome = android.content.Intent(android.content.Intent.ACTION_MAIN)
+            .addCategory(android.content.Intent.CATEGORY_LEANBACK_LAUNCHER)
+        if (pm.queryIntentActivities(leanbackHome, 0).isNotEmpty() &&
+            pm.getLaunchIntentForPackage("com.android.tv.settings") != null) return@lazy true
+        try {
+            pm.getPackageInfo("com.android.tv.settings", 0); true
+        } catch (e: Exception) { false }
     }
 
     // TV launchers and apps ignore touch and have no focused text field to take
