@@ -21,6 +21,7 @@ import android.view.ViewGroup.LayoutParams
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.KeyEvent as KeyEventAndroid
 import android.view.ViewConfiguration
+import android.view.View
 import android.graphics.Rect
 import android.media.AudioManager
 import android.accessibilityservice.AccessibilityServiceInfo
@@ -560,8 +561,11 @@ class InputService : AccessibilityService() {
     // TV launchers and apps ignore touch and have no focused text field to take
     // key events, so remote keys must be replayed as D-pad global actions (API 33+).
     private fun tryHandleTvNavKeyEvent(event: KeyEventAndroid): Boolean {
-        if (!isTv || Build.VERSION.SDK_INT < 33) {
+        if (!isTv) {
             return false
+        }
+        if (Build.VERSION.SDK_INT < 33) {
+            return tryHandleLegacyTvNavKeyEvent(event)
         }
         val action = when (event.keyCode) {
             KeyEventAndroid.KEYCODE_DPAD_UP -> GLOBAL_ACTION_DPAD_UP
@@ -584,6 +588,136 @@ class InputService : AccessibilityService() {
             performGlobalAction(action)
         }
         return true
+    }
+
+    // Android 5-12 has no D-pad global actions, so move the focus highlight
+    // ourselves through the accessibility tree and click the focused element.
+    private fun tryHandleLegacyTvNavKeyEvent(event: KeyEventAndroid): Boolean {
+        val direction = when (event.keyCode) {
+            KeyEventAndroid.KEYCODE_DPAD_UP -> View.FOCUS_UP
+            KeyEventAndroid.KEYCODE_DPAD_DOWN -> View.FOCUS_DOWN
+            KeyEventAndroid.KEYCODE_DPAD_LEFT -> View.FOCUS_LEFT
+            KeyEventAndroid.KEYCODE_DPAD_RIGHT -> View.FOCUS_RIGHT
+            KeyEventAndroid.KEYCODE_ENTER,
+            KeyEventAndroid.KEYCODE_NUMPAD_ENTER,
+            KeyEventAndroid.KEYCODE_DPAD_CENTER -> 0
+            KeyEventAndroid.KEYCODE_ESCAPE,
+            KeyEventAndroid.KEYCODE_BACK -> -1
+            KeyEventAndroid.KEYCODE_MOVE_HOME,
+            KeyEventAndroid.KEYCODE_HOME -> -2
+            else -> return false
+        }
+        if (direction >= 0 && isEditingText()) {
+            return false
+        }
+        if (event.action != KeyEventAndroid.ACTION_DOWN) {
+            return true
+        }
+        when (direction) {
+            -1 -> performGlobalAction(GLOBAL_ACTION_BACK)
+            -2 -> performGlobalAction(GLOBAL_ACTION_HOME)
+            0 -> clickFocusedTvNode()
+            else -> moveTvFocus(direction)
+        }
+        return true
+    }
+
+    private fun focusedTvNode(): AccessibilityNodeInfo? {
+        val node = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        return if (node != null && node.isVisibleToUser) node else null
+    }
+
+    private fun collectTvFocusables(): List<AccessibilityNodeInfo> {
+        val result = ArrayList<AccessibilityNodeInfo>()
+        val root = rootInActiveWindow ?: return result
+        val queue = LinkedList<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.poll() ?: continue
+            if (!node.isVisibleToUser) {
+                continue
+            }
+            if (node.isFocusable && node.isEnabled) {
+                result.add(node)
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return result
+    }
+
+    private fun moveTvFocus(direction: Int) {
+        val current = focusedTvNode()
+        if (current == null) {
+            // nothing focused yet: focus the top-left-most element
+            val first = collectTvFocusables().minByOrNull {
+                val r = Rect(); it.getBoundsInScreen(r); r.top * 4 + r.left
+            }
+            first?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            return
+        }
+        val from = Rect()
+        current.getBoundsInScreen(from)
+        // Ask the app's own focus finder first, like a real remote would.
+        val next = current.focusSearch(direction)
+        if (next != null && next != current && next.isVisibleToUser &&
+            next.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) {
+            return
+        }
+        // Otherwise pick the nearest focusable element in that direction.
+        var best: AccessibilityNodeInfo? = null
+        var bestScore = Long.MAX_VALUE
+        val r = Rect()
+        for (node in collectTvFocusables()) {
+            if (node == current) continue
+            node.getBoundsInScreen(r)
+            if (r.contains(from)) continue
+            val dx = r.centerX() - from.centerX()
+            val dy = r.centerY() - from.centerY()
+            val (major, minor) = when (direction) {
+                View.FOCUS_UP -> Pair(from.top - r.bottom, dx)
+                View.FOCUS_DOWN -> Pair(r.top - from.bottom, dx)
+                View.FOCUS_LEFT -> Pair(from.left - r.right, dy)
+                else -> Pair(r.left - from.right, dy)
+            }
+            val ahead = when (direction) {
+                View.FOCUS_UP -> dy < 0
+                View.FOCUS_DOWN -> dy > 0
+                View.FOCUS_LEFT -> dx < 0
+                else -> dx > 0
+            }
+            if (!ahead) continue
+            val m = maxOf(major, 0).toLong()
+            val score = 13 * m * m + minor.toLong() * minor
+            if (score < bestScore) {
+                bestScore = score
+                best = node
+            }
+        }
+        if (best?.performAction(AccessibilityNodeInfo.ACTION_FOCUS) == true) {
+            return
+        }
+        // At the edge of a list: scroll it, the app then moves focus itself.
+        val action = if (direction == View.FOCUS_UP || direction == View.FOCUS_LEFT)
+            AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        var p: AccessibilityNodeInfo? = current
+        while (p != null) {
+            if (p.isScrollable && p.performAction(action)) return
+            p = p.parent
+        }
+    }
+
+    private fun clickFocusedTvNode() {
+        var node = focusedTvNode()
+        while (node != null) {
+            if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                return
+            }
+            node = node.parent
+        }
+        focusedTvNode()?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
     private fun isEditingText(): Boolean {
