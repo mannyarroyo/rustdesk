@@ -44,7 +44,7 @@ object LocalAdb {
     private const val AUTH_RSAPUBLICKEY = 3
     private const val STALE_MS = 3000L
     private const val IDLE_MS = 15000L
-    private const val RETRY_MS = 30000L
+    private const val RETRY_MS = 5000L
 
     private class Msg(val cmd: Int, val arg0: Int, val arg1: Int, val data: ByteArray)
 
@@ -121,7 +121,11 @@ object LocalAdb {
             socket.soTimeout = 15000
             while (true) {
                 val (command, queuedAt) = queue.poll(IDLE_MS, TimeUnit.MILLISECONDS) ?: break
-                if (SystemClock.uptimeMillis() - queuedAt > STALE_MS) continue
+                if (SystemClock.uptimeMillis() - queuedAt > STALE_MS) {
+                    Log.d(TAG, "dropped stale: $command")
+                    continue
+                }
+                Log.d(TAG, "exec: $command")
                 exec(input, out, command)
             }
             Log.d(TAG, "idle, released")

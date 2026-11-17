@@ -299,6 +299,9 @@ class InputService : AccessibilityService() {
         }
         val x = max(0, _x) * SCREEN_INFO.scale
         val y = max(0, _y) * SCREEN_INFO.scale
+        if (mask != 0 && mask != LEFT_MOVE) {
+            Log.d(logTag, "legacy mouse mask=$mask x=$x y=$y down=$leftIsDown adb=${LocalAdb.ready}")
+        }
         when (mask) {
             0, LEFT_MOVE -> {
                 mouseX = x
@@ -331,6 +334,10 @@ class InputService : AccessibilityService() {
 
     @RequiresApi(Build.VERSION_CODES.N)
     fun onTouchInput(mask: Int, _x: Int, _y: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            Log.d(logTag, "legacy touch mask=$mask x=$_x y=$_y ignored")
+            return
+        }
         when (mask) {
             TOUCH_PAN_UPDATE -> {
                 mouseX -= _x * SCREEN_INFO.scale
