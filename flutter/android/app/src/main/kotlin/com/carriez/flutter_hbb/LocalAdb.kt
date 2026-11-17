@@ -18,7 +18,7 @@ import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
 import javax.crypto.Cipher
 
@@ -43,10 +43,12 @@ object LocalAdb {
     private const val AUTH_SIGNATURE = 2
     private const val AUTH_RSAPUBLICKEY = 3
     private const val STALE_MS = 3000L
+    private const val IDLE_MS = 15000L
+    private const val RETRY_MS = 30000L
 
     private class Msg(val cmd: Int, val arg0: Int, val arg1: Int, val data: ByteArray)
 
-    private val queue = LinkedBlockingQueue<Pair<String, Long>>()
+    private val queue = LinkedBlockingDeque<Pair<String, Long>>()
     private var worker: Thread? = null
     private var keyDir: File? = null
     private var nextLocalId = 1
@@ -72,15 +74,22 @@ object LocalAdb {
         return true
     }
 
+    // Some boxes' adbd serves a single network client at a time, so the
+    // connection is only held while commands are flowing and released when
+    // idle, leaving ADB usable by a technician.
     private fun loop() {
         while (true) {
             try {
                 session()
             } catch (e: Exception) {
-                Log.d(TAG, "session ended: $e")
+                Log.d(TAG, "session failed: $e")
+                ready = false
+                queue.clear()
+                SystemClock.sleep(RETRY_MS)
+                continue
             }
-            ready = false
-            SystemClock.sleep(10000)
+            val next = queue.take()
+            queue.putFirst(next)
         }
     }
 
@@ -88,13 +97,12 @@ object LocalAdb {
         Socket().use { socket ->
             socket.connect(InetSocketAddress("127.0.0.1", 5555), 3000)
             socket.tcpNoDelay = true
+            socket.soTimeout = 10000
             val input = DataInputStream(socket.getInputStream())
             val out = socket.getOutputStream()
             val keys = loadKeys()
             write(out, A_CNXN, VERSION, MAX_DATA, "host::\u0000".toByteArray())
             var sentSignature = false
-            // No timeout while the user may be looking at the approval prompt.
-            socket.soTimeout = 0
             while (true) {
                 val m = read(input)
                 if (m.cmd == A_CNXN) break
@@ -104,18 +112,19 @@ object LocalAdb {
                     write(out, A_AUTH, AUTH_SIGNATURE, 0, sign(keys, m.data))
                 } else {
                     Log.d(TAG, "key not yet trusted, asking the user")
+                    socket.soTimeout = 60000
                     write(out, A_AUTH, AUTH_RSAPUBLICKEY, 0, adbPublicKey(keys.public as RSAPublicKey))
                 }
             }
             Log.d(TAG, "connected")
-            queue.clear()
             ready = true
             socket.soTimeout = 15000
             while (true) {
-                val (command, queuedAt) = queue.poll(60, TimeUnit.SECONDS) ?: continue
+                val (command, queuedAt) = queue.poll(IDLE_MS, TimeUnit.MILLISECONDS) ?: break
                 if (SystemClock.uptimeMillis() - queuedAt > STALE_MS) continue
                 exec(input, out, command)
             }
+            Log.d(TAG, "idle, released")
         }
     }
 
