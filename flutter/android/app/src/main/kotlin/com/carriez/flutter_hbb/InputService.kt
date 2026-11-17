@@ -120,6 +120,10 @@ class InputService : AccessibilityService() {
      */
     @RequiresApi(Build.VERSION_CODES.N)
     fun onMouseInput(mask: Int, _x: Int, _y: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            onLegacyMouseInput(mask, _x, _y)
+            return
+        }
         val x = max(0, _x)
         val y = max(0, _y)
 
@@ -276,6 +280,52 @@ class InputService : AccessibilityService() {
             builder.addStroke(stroke)
             wheelActionsQueue.offer(builder.build())
             consumeWheelActions()
+        }
+    }
+
+    private var legacyDownX = 0
+    private var legacyDownY = 0
+    private var legacyDownTime = 0L
+
+    // Below API 24 there is no gesture API: taps, drags and long presses go
+    // through the device's own ADB shell instead.
+    private fun onLegacyMouseInput(mask: Int, _x: Int, _y: Int) {
+        if (mask == MOUSE_TYPE_WHEEL) {
+            if (_y != 0) {
+                val toY = max(0, mouseY + if (_y < 0) -300 else 300)
+                LocalAdb.run("input swipe $mouseX $mouseY $mouseX $toY 150")
+            }
+            return
+        }
+        val x = max(0, _x) * SCREEN_INFO.scale
+        val y = max(0, _y) * SCREEN_INFO.scale
+        when (mask) {
+            0, LEFT_MOVE -> {
+                mouseX = x
+                mouseY = y
+            }
+            LEFT_DOWN -> {
+                mouseX = x
+                mouseY = y
+                legacyDownX = x
+                legacyDownY = y
+                legacyDownTime = android.os.SystemClock.uptimeMillis()
+                leftIsDown = true
+            }
+            LEFT_UP -> if (leftIsDown) {
+                leftIsDown = false
+                val held = android.os.SystemClock.uptimeMillis() - legacyDownTime
+                if (abs(x - legacyDownX) + abs(y - legacyDownY) > 16) {
+                    LocalAdb.run("input swipe $legacyDownX $legacyDownY $x $y ${held.coerceIn(100L, 2000L)}")
+                } else if (held >= longPressDuration) {
+                    LocalAdb.run("input swipe $x $y $x $y $held")
+                } else if (!LocalAdb.run("input tap $x $y")) {
+                    tryClickTvNodeAt(x, y)
+                }
+            }
+            RIGHT_UP -> LocalAdb.run("input swipe $mouseX $mouseY $mouseX $mouseY $longPressDuration")
+            BACK_UP -> performGlobalAction(GLOBAL_ACTION_BACK)
+            WHEEL_BUTTON_UP -> performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }
 
@@ -727,6 +777,9 @@ class InputService : AccessibilityService() {
     }
 
     private fun clickFocusedTvNode() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && LocalAdb.run("input keyevent 23")) {
+            return
+        }
         val node = focusedTvNode()
         if (node == null) {
             Log.d(logTag, "tv enter: no focused node")
@@ -1025,6 +1078,9 @@ class InputService : AccessibilityService() {
             info.flags = FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
         setServiceInfo(info)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            LocalAdb.start(this)
+        }
         fakeEditTextForTextStateCalculation = EditText(this)
         // Size here doesn't matter, we won't show this view.
         fakeEditTextForTextStateCalculation?.layoutParams = LayoutParams(100, 100)
