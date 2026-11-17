@@ -120,12 +120,9 @@ class _UStreamingHomeState extends State<UStreamingHome> {
           const SizedBox(width: 14),
           Flexible(
               child: _text(online
-                  ? 'Ready. Call U-Streaming support and read them this number.'
+                  ? 'Ready. Give your Support Representative the number above to connect.'
                   : 'Connecting to U-Streaming support...')),
         ]),
-        const SizedBox(height: 12),
-        _text('Press BACK to return to your TV. Support keeps working.',
-            dim: true),
       ],
     );
   }
