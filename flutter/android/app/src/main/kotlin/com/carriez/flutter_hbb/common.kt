@@ -71,6 +71,15 @@ const val USTREAMING = true
 const val ACT_USTREAMING_START = "USTREAMING_START"
 const val KEY_USTREAMING_SETUP_PENDING = "KEY_USTREAMING_SETUP_PENDING"
 
+// While Android's screen-capture prompt is open, remote input is dropped: the
+// controller sends clicks before any picture arrives, and on Android 7-9 a
+// click outside the prompt closes it before the customer can answer.
+@Volatile
+var capturePromptOpenedAt = 0L
+
+fun isCapturePromptOpen(): Boolean =
+    capturePromptOpenedAt != 0L && System.currentTimeMillis() - capturePromptOpenedAt < 120_000
+
 @SuppressLint("ConstantLocale")
 val LOCAL_NAME = Locale.getDefault().toString()
 val SCREEN_INFO = Info(0, 0, 1, 200)

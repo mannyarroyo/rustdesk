@@ -66,6 +66,9 @@ class MainService : Service() {
     @Keep
     @RequiresApi(Build.VERSION_CODES.N)
     fun rustPointerInput(kind: Int, mask: Int, x: Int, y: Int) {
+        if (USTREAMING && isCapturePromptOpen()) {
+            return
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && mask != 0 && mask != LEFT_MOVE) {
             Log.d(logTag, "pointer kind=$kind mask=$mask input=${InputService.ctx != null}")
         }
@@ -94,6 +97,9 @@ class MainService : Service() {
     @Keep
     @RequiresApi(Build.VERSION_CODES.N)
     fun rustKeyEventInput(input: ByteArray) {
+        if (USTREAMING && isCapturePromptOpen()) {
+            return
+        }
         InputService.ctx?.onKeyEvent(input)
     }
 
@@ -377,6 +383,7 @@ class MainService : Service() {
     }
 
     private fun requestMediaProjection(recovery: Boolean = false) {
+        capturePromptOpenedAt = System.currentTimeMillis()
         val intent = Intent(this, PermissionRequestTransparentActivity::class.java).apply {
             action = ACT_REQUEST_MEDIA_PROJECTION
             flags = Intent.FLAG_ACTIVITY_NEW_TASK

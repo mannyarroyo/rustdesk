@@ -52,6 +52,11 @@ class PermissionRequestTransparentActivity: Activity() {
         finish()
     }
 
+    override fun onDestroy() {
+        capturePromptOpenedAt = 0L
+        super.onDestroy()
+    }
+
     private fun launchService(mediaProjectionResultIntent: Intent) {
         Log.d(logTag, "Launch MainService")
         val serviceIntent = Intent(this, MainService::class.java)

@@ -208,7 +208,7 @@ class InputService : AccessibilityService() {
         if (mask == WHEEL_BUTTON_UP) {
             if (recentActionTask != null) {
                 recentActionTask!!.cancel()
-                performGlobalAction(GLOBAL_ACTION_HOME)
+                if (isTv) goHome() else performGlobalAction(GLOBAL_ACTION_HOME)
             }
             return
         }
@@ -688,11 +688,23 @@ class InputService : AccessibilityService() {
         }
         when (direction) {
             -1 -> performGlobalAction(GLOBAL_ACTION_BACK)
-            -2 -> performGlobalAction(GLOBAL_ACTION_HOME)
+            -2 -> goHome()
             0 -> clickFocusedTvNode()
             else -> moveTvFocus(direction)
         }
         return true
+    }
+
+    // Some Amlogic firmware (Skystream TWO) routes Home through HDMI-CEC and
+    // drops it when CEC is busy, so open the launcher directly.
+    private fun goHome() {
+        try {
+            startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            Log.e(logTag, "goHome failed: $e")
+            performGlobalAction(GLOBAL_ACTION_HOME)
+        }
     }
 
     private fun focusedTvNode(): AccessibilityNodeInfo? {
