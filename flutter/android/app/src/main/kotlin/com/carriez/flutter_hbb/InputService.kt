@@ -1087,6 +1087,9 @@ class InputService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             LocalAdb.start(this)
         }
+        if (USTREAMING) {
+            startUStreamingService(this)
+        }
         // Customer just switched us on from the setup screen: bring them back.
         val prefs = getSharedPreferences(KEY_SHARED_PREFERENCES, MODE_PRIVATE)
         if (USTREAMING && prefs.getBoolean(KEY_USTREAMING_SETUP_PENDING, false)) {

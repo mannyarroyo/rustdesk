@@ -171,3 +171,22 @@ fun getScreenSize(windowManager: WindowManager) : Pair<Int, Int>{
     Log.d("common", "translate:$LOCAL_NAME")
     return FFI.translateLocale(LOCAL_NAME, input)
 }
+
+/** Starts the U-Streaming host service in the background, if the app was set up. */
+fun startUStreamingService(context: Context) {
+    val prefs = context.getSharedPreferences(KEY_SHARED_PREFERENCES, Context.MODE_PRIVATE)
+    if (prefs.getString(KEY_APP_DIR_CONFIG_PATH, "").isNullOrEmpty()) {
+        Log.d("ustreaming", "app never opened, not starting")
+        return
+    }
+    val start = Intent(context, MainService::class.java).apply { action = ACT_USTREAMING_START }
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(start)
+        } else {
+            context.startService(start)
+        }
+    } catch (e: Exception) {
+        Log.e("ustreaming", "start service failed: $e")
+    }
+}
