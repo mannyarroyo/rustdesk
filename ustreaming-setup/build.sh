@@ -10,16 +10,9 @@ BT="$SDK/build-tools/34.0.0"
 JAR="$SDK/platforms/android-34/android.jar"
 W="$(mktemp -d)"
 
-# Icons and banner come from the main app so both look the same.
-MAIN_RES="$HERE/../flutter/android/app/src/main/res"
-mkdir -p "$W/res/drawable-xhdpi"
-cp "$MAIN_RES/drawable-xhdpi/banner.png" "$W/res/drawable-xhdpi/"
-mkdir -p "$W/res/drawable-nodpi"
-cp "$HERE/../flutter/assets/ustreaming_logo.png" "$W/res/drawable-nodpi/logo.png"
-for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-  mkdir -p "$W/res/mipmap-$d"
-  cp "$MAIN_RES/mipmap-$d/ic_launcher.png" "$W/res/mipmap-$d/"
-done
+# The Setup app has its own icons, banner and logo.
+mkdir -p "$W"
+cp -R "$HERE/res" "$W/res"
 
 "$BT/aapt2" compile --dir "$W/res" -o "$W/res.zip"
 "$BT/aapt2" link -o "$W/base.apk" -I "$JAR" --manifest "$HERE/AndroidManifest.xml" \

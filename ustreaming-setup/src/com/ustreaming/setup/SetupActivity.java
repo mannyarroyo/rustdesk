@@ -66,7 +66,7 @@ public class SetupActivity extends Activity {
             if (System.currentTimeMillis() > hintsUntil) return;
             String text = canInstall()
                     ? "Done! Now press BACK on your remote."
-                    : "Press DOWN to \"U-Streaming Setup\", press OK so it says Allowed, then press BACK.";
+                    : "Press DOWN to \"U-Streaming Setup\", click it to turn it On, then press BACK.";
             Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
             main.postDelayed(this, 8000);
         }
@@ -318,7 +318,7 @@ public class SetupActivity extends Activity {
                 title.setText("Step 1 of 2: Allow installing");
                 message.setText("On the next screen:\n"
                         + "1.  Press DOWN until you reach \"U-Streaming Setup\"\n"
-                        + "2.  Press OK so it says Allowed\n"
+                        + "2.  Click it to Turn \"U-Streaming Setup\" On\n"
                         + "3.  Press BACK on your remote");
                 button.setText("Open settings");
                 break;
