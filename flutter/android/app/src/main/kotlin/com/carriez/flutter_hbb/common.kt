@@ -214,9 +214,9 @@ fun startAccessibilityHints(context: Context) {
             Toast.makeText(
                 context,
                 "Press DOWN to \"U-Streaming Support\" at the bottom of the list, press OK, then Enable.",
-                Toast.LENGTH_LONG
+                Toast.LENGTH_SHORT
             ).show()
-            handler.postDelayed(this, 7000)
+            handler.postDelayed(this, 8000)
         }
     }
     handler.postDelayed(hint, 2000)

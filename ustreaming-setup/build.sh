@@ -14,6 +14,8 @@ W="$(mktemp -d)"
 MAIN_RES="$HERE/../flutter/android/app/src/main/res"
 mkdir -p "$W/res/drawable-xhdpi"
 cp "$MAIN_RES/drawable-xhdpi/banner.png" "$W/res/drawable-xhdpi/"
+mkdir -p "$W/res/drawable-nodpi"
+cp "$HERE/../flutter/assets/ustreaming_logo.png" "$W/res/drawable-nodpi/logo.png"
 for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
   mkdir -p "$W/res/mipmap-$d"
   cp "$MAIN_RES/mipmap-$d/ic_launcher.png" "$W/res/mipmap-$d/"

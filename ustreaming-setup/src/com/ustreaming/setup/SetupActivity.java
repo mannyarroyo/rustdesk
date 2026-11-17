@@ -67,8 +67,8 @@ public class SetupActivity extends Activity {
             String text = canInstall()
                     ? "Done! Now press BACK on your remote."
                     : "Press DOWN to \"U-Streaming Setup\", press OK so it says Allowed, then press BACK.";
-            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
-            main.postDelayed(this, 7000);
+            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+            main.postDelayed(this, 8000);
         }
     };
 
@@ -359,7 +359,7 @@ public class SetupActivity extends Activity {
         root.setPadding((int) (56 * d), (int) (32 * d), (int) (56 * d), (int) (32 * d));
 
         ImageView logo = new ImageView(this);
-        logo.setImageResource(getResources().getIdentifier("ic_launcher", "mipmap", getPackageName()));
+        logo.setImageResource(getResources().getIdentifier("logo", "drawable", getPackageName()));
         root.addView(logo, new LinearLayout.LayoutParams((int) (200 * d), (int) (200 * d)));
 
         LinearLayout col = new LinearLayout(this);
