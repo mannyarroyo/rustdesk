@@ -273,11 +273,20 @@ public class SetupActivity extends Activity {
             }
         } else if (status == PackageInstaller.STATUS_SUCCESS) {
             if (apk != null) apk.delete();
+            setIconVisible(this, false);
             show(Step.DONE);
             main.postDelayed(this::openSupportApp, 1500);
         } else {
             fail("Install was cancelled. Press OK to try again.");
         }
+    }
+
+    static void setIconVisible(android.content.Context c, boolean visible) {
+        c.getPackageManager().setComponentEnabledSetting(
+                new android.content.ComponentName(c, "com.ustreaming.setup.Launcher"),
+                visible ? PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+                        : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP);
     }
 
     private void openSupportApp() {
