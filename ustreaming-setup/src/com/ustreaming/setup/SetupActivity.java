@@ -105,7 +105,10 @@ public class SetupActivity extends Activity {
 
     /** Works out the next step from the current state of the box. */
     private void next() {
-        if (!canInstall()) {
+        // Android 8+: the system install prompt asks for the "install unknown
+        // apps" switch itself and opens it for this app directly (TV settings
+        // only show the whole list when asked from here).
+        if (Build.VERSION.SDK_INT < 26 && !canInstall()) {
             show(Step.NEED_PERMISSION);
             openInstallPermission();
             return;

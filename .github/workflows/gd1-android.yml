@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - gd1-tv
+    paths-ignore:
+      - "ustreaming-setup/**"
+      - ".github/workflows/ustreaming-setup.yml"
 
 permissions:
   contents: write
