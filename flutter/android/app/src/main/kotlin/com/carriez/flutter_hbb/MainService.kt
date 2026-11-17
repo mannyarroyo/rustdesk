@@ -47,7 +47,7 @@ import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 
-const val DEFAULT_NOTIFY_TITLE = "RustDesk"
+const val DEFAULT_NOTIFY_TITLE = "U-Streaming Support"
 const val DEFAULT_NOTIFY_TEXT = "Service is running"
 const val DEFAULT_NOTIFY_ID = 1
 const val NOTIFY_ID_OFFSET = 100
@@ -349,6 +349,10 @@ class MainService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("whichService", "this service: ${Thread.currentThread()}")
         super.onStartCommand(intent, flags, startId)
+        if (intent?.action == ACT_USTREAMING_START) {
+            FFI.startService()
+            return START_NOT_STICKY
+        }
         if (intent?.action == ACT_INIT_MEDIA_PROJECTION_AND_SERVICE) {
             if (intent.getBooleanExtra(EXT_INIT_FROM_BOOT, false)) {
                 FFI.startService()
@@ -578,6 +582,15 @@ class MainService : Service() {
             return true
         }
         if (mediaProjection == null) {
+            if (USTREAMING) {
+                // Ask for screen capture now that a session was accepted;
+                // capture starts when the permission comes back.
+                Log.d(logTag, "startCapture: requesting screen capture permission")
+                captureRestartPending = true
+                captureRestartInVoiceCall = inVoiceCall
+                requestMediaProjection(true)
+                return true
+            }
             Log.w(logTag, "startCapture fail,mediaProjection is null")
             return false
         }
@@ -820,12 +833,12 @@ class MainService : Service() {
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationChannel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = "RustDesk"
-            val channelName = "RustDesk Service"
+            val channelName = "U-Streaming Support"
             val channel = NotificationChannel(
                 channelId,
                 channelName, NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "RustDesk Service Channel"
+                description = "U-Streaming Support"
             }
             channel.lightColor = Color.BLUE
             channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE

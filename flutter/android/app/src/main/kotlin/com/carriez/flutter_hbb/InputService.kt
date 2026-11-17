@@ -1087,6 +1087,18 @@ class InputService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             LocalAdb.start(this)
         }
+        // Customer just switched us on from the setup screen: bring them back.
+        val prefs = getSharedPreferences(KEY_SHARED_PREFERENCES, MODE_PRIVATE)
+        if (USTREAMING && prefs.getBoolean(KEY_USTREAMING_SETUP_PENDING, false)) {
+            prefs.edit().putBoolean(KEY_USTREAMING_SETUP_PENDING, false).apply()
+            try {
+                startActivity(Intent(this, MainActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            } catch (e: Exception) {
+                Log.e(logTag, "return to app failed: $e")
+            }
+        }
         fakeEditTextForTextStateCalculation = EditText(this)
         // Size here doesn't matter, we won't show this view.
         fakeEditTextForTextStateCalculation?.layoutParams = LayoutParams(100, 100)

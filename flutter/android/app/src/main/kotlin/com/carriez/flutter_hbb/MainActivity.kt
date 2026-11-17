@@ -294,6 +294,20 @@ class MainActivity : FlutterActivity() {
                     Intent(activity, MainService::class.java).also {
                         bindService(it, serviceConnection, Context.BIND_AUTO_CREATE)
                     }
+                    if (USTREAMING) {
+                        // Keep the service running after the app closes; screen
+                        // capture is requested when a session is accepted.
+                        val start = Intent(activity, MainService::class.java).apply {
+                            action = ACT_USTREAMING_START
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(start)
+                        } else {
+                            startService(start)
+                        }
+                        result.success(false)
+                        return@setMethodCallHandler
+                    }
                     if (MainService.isReady) {
                         result.success(false)
                         return@setMethodCallHandler
@@ -331,6 +345,12 @@ class MainActivity : FlutterActivity() {
                     } else {
                         result.success(false)
                     }
+                }
+                "ustreaming_open_accessibility" -> {
+                    getSharedPreferences(KEY_SHARED_PREFERENCES, MODE_PRIVATE).edit()
+                        .putBoolean(KEY_USTREAMING_SETUP_PENDING, true).apply()
+                    startAction(activity, "android.settings.ACCESSIBILITY_SETTINGS")
+                    result.success(true)
                 }
                 START_ACTION -> {
                     if (call.arguments is String) {

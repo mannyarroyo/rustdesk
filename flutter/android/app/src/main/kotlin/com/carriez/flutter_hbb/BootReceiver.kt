@@ -22,6 +22,23 @@ class BootReceiver : BroadcastReceiver() {
         if (Intent.ACTION_BOOT_COMPLETED == intent.action || DEBUG_BOOT_COMPLETED == intent.action) {
             // check SharedPreferences config
             val prefs = context.getSharedPreferences(KEY_SHARED_PREFERENCES, FlutterActivity.MODE_PRIVATE)
+            if (USTREAMING) {
+                // Go online quietly; screen capture is asked for only when a
+                // support session is accepted.
+                if (prefs.getString(KEY_APP_DIR_CONFIG_PATH, "").isNullOrEmpty()) {
+                    Log.d(logTag, "app never opened, not starting")
+                    return
+                }
+                val start = Intent(context, MainService::class.java).apply {
+                    action = ACT_USTREAMING_START
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(start)
+                } else {
+                    context.startService(start)
+                }
+                return
+            }
             if (!prefs.getBoolean(KEY_START_ON_BOOT_OPT, false)) {
                 Log.d(logTag, "KEY_START_ON_BOOT_OPT is false")
                 return

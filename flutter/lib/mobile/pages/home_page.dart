@@ -1,4 +1,5 @@
 import 'package:flutter_hbb/ustreaming.dart';
+import 'package:flutter_hbb/mobile/pages/ustreaming_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/mobile/pages/server_page.dart';
 import 'package:flutter_hbb/mobile/pages/settings_page.dart';
@@ -66,6 +67,7 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (isAndroid && kUStreaming) return const UStreamingHome();
     return WillPopScope(
         onWillPop: () async {
           if (_selectedIndex != 0) {
