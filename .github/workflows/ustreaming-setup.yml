@@ -1,0 +1,46 @@
+name: U-Streaming Setup APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [gd1-tv]
+    paths:
+      - "ustreaming-setup/**"
+      - ".github/workflows/ustreaming-setup.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Android SDK packages
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+      - name: Build
+        run: bash ustreaming-setup/build.sh $((100 + ${{ github.run_number }})) unsigned.apk
+      - name: Sign
+        env:
+          KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
+          ALIAS: ${{ secrets.ANDROID_ALIAS }}
+          STORE_PASS: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEY" | base64 -d > release.jks
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" sign --ks release.jks --ks-key-alias "$ALIAS" \
+            --ks-pass env:STORE_PASS --key-pass env:KEY_PASS --out u-streaming-setup.apk unsigned.apk
+          rm release.jks
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify u-streaming-setup.apk
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view setup > /dev/null 2>&1 || \
+            gh release create setup --title "U-Streaming Setup" --latest=false \
+              --notes "Customer installer. Install this with Downloader; it installs U-Streaming Support."
+          gh release upload setup u-streaming-setup.apk --clobber
