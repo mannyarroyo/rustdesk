@@ -300,30 +300,29 @@ class InputService : AccessibilityService() {
         val x = max(0, _x) * SCREEN_INFO.scale
         val y = max(0, _y) * SCREEN_INFO.scale
         if (mask != 0 && mask != LEFT_MOVE) {
-            Log.d(logTag, "legacy mouse mask=$mask x=$x y=$y down=$leftIsDown adb=${LocalAdb.ready}")
+            Log.d(logTag, "legacy mouse mask=$mask at=$mouseX,$mouseY down=$leftIsDown adb=${LocalAdb.ready}")
         }
         when (mask) {
             0, LEFT_MOVE -> {
                 mouseX = x
                 mouseY = y
             }
+            // Button events carry no position; use the last pointer move.
             LEFT_DOWN -> {
-                mouseX = x
-                mouseY = y
-                legacyDownX = x
-                legacyDownY = y
+                legacyDownX = mouseX
+                legacyDownY = mouseY
                 legacyDownTime = android.os.SystemClock.uptimeMillis()
                 leftIsDown = true
             }
             LEFT_UP -> if (leftIsDown) {
                 leftIsDown = false
                 val held = android.os.SystemClock.uptimeMillis() - legacyDownTime
-                if (abs(x - legacyDownX) + abs(y - legacyDownY) > 16) {
-                    LocalAdb.run("input swipe $legacyDownX $legacyDownY $x $y ${held.coerceIn(100L, 2000L)}")
+                if (abs(mouseX - legacyDownX) + abs(mouseY - legacyDownY) > 16) {
+                    LocalAdb.run("input swipe $legacyDownX $legacyDownY $mouseX $mouseY ${held.coerceIn(100L, 2000L)}")
                 } else if (held >= longPressDuration) {
-                    LocalAdb.run("input swipe $x $y $x $y $held")
-                } else if (!LocalAdb.run("input tap $x $y")) {
-                    tryClickTvNodeAt(x, y)
+                    LocalAdb.run("input swipe $mouseX $mouseY $mouseX $mouseY $held")
+                } else if (!LocalAdb.run("input tap $mouseX $mouseY")) {
+                    tryClickTvNodeAt(mouseX, mouseY)
                 }
             }
             RIGHT_UP -> LocalAdb.run("input swipe $mouseX $mouseY $mouseX $mouseY $longPressDuration")
