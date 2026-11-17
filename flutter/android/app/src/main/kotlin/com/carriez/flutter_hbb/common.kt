@@ -18,6 +18,7 @@ import android.provider.Settings.*
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat.getSystemService
 import com.hjq.permissions.Permission
@@ -198,4 +199,25 @@ fun startUStreamingService(context: Context) {
     } catch (e: Exception) {
         Log.e("ustreaming", "start service failed: $e")
     }
+}
+
+/**
+ * While the customer looks for the switch in the long Accessibility list,
+ * keep reminding them what to do. Stops once the switch is on.
+ */
+fun startAccessibilityHints(context: Context) {
+    val handler = Handler(Looper.getMainLooper())
+    val until = java.lang.System.currentTimeMillis() + 3 * 60 * 1000
+    val hint = object : Runnable {
+        override fun run() {
+            if (InputService.isOpen || java.lang.System.currentTimeMillis() > until) return
+            Toast.makeText(
+                context,
+                "Press DOWN to \"U-Streaming Support\" at the bottom of the list, press OK, then Enable.",
+                Toast.LENGTH_LONG
+            ).show()
+            handler.postDelayed(this, 7000)
+        }
+    }
+    handler.postDelayed(hint, 2000)
 }

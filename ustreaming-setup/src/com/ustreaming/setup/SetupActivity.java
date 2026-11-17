@@ -23,6 +23,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -57,6 +58,19 @@ public class SetupActivity extends Activity {
     private TextView message;
     private Button button;
     private File apk;
+    private boolean permissionTried;
+    private long hintsUntil;
+    private final Runnable hint = new Runnable() {
+        @Override
+        public void run() {
+            if (System.currentTimeMillis() > hintsUntil) return;
+            String text = canInstall()
+                    ? "Done! Now press BACK on your remote."
+                    : "Press DOWN to \"U-Streaming Setup\", press OK so it says Allowed, then press BACK.";
+            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
+            main.postDelayed(this, 7000);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,9 +89,15 @@ public class SetupActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        stopHints();
         // Returning from the "install unknown apps" switch or the uninstall prompt.
-        if (step == Step.NEED_PERMISSION && canInstall()) {
-            next();
+        if (step == Step.NEED_PERMISSION) {
+            if (canInstall()) {
+                next();
+            } else if (permissionTried) {
+                show(Step.NEED_PERMISSION);
+                title.setText("Not allowed yet");
+            }
         } else if (step == Step.NEED_UNINSTALL && !isInstalled()) {
             next();
         }
@@ -105,12 +125,8 @@ public class SetupActivity extends Activity {
 
     /** Works out the next step from the current state of the box. */
     private void next() {
-        // Android 8+: the system install prompt asks for the "install unknown
-        // apps" switch itself and opens it for this app directly (TV settings
-        // only show the whole list when asked from here).
-        if (Build.VERSION.SDK_INT < 26 && !canInstall()) {
+        if (!canInstall()) {
             show(Step.NEED_PERMISSION);
-            openInstallPermission();
             return;
         }
         if (isBlockedCopyInstalled()) {
@@ -126,6 +142,11 @@ public class SetupActivity extends Activity {
 
     private void openInstallPermission() {
         if (Build.VERSION.SDK_INT < 26) return;
+        permissionTried = true;
+        // TV settings ignore the package and show the whole list of apps,
+        // so keep reminding the customer what to look for.
+        hintsUntil = System.currentTimeMillis() + 3 * 60 * 1000;
+        main.postDelayed(hint, 1500);
         try {
             startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                     Uri.parse("package:" + getPackageName())));
@@ -133,6 +154,11 @@ public class SetupActivity extends Activity {
             Log.e(TAG, "no unknown-sources screen", e);
             startActivity(new Intent(Settings.ACTION_SECURITY_SETTINGS));
         }
+    }
+
+    private void stopHints() {
+        hintsUntil = 0;
+        main.removeCallbacks(hint);
     }
 
     private boolean isInstalled() {
@@ -280,8 +306,11 @@ public class SetupActivity extends Activity {
                 button.setText("Install");
                 break;
             case NEED_PERMISSION:
-                title.setText("Allow U-Streaming Setup to install");
-                message.setText("On the next screen, turn ON \"U-Streaming Setup\",\nthen press BACK on your remote.");
+                title.setText("Step 1 of 2: Allow installing");
+                message.setText("On the next screen:\n"
+                        + "1.  Press DOWN until you reach \"U-Streaming Setup\"\n"
+                        + "2.  Press OK so it says Allowed\n"
+                        + "3.  Press BACK on your remote");
                 button.setText("Open settings");
                 break;
             case NEED_UNINSTALL:
@@ -295,8 +324,8 @@ public class SetupActivity extends Activity {
                 button.setVisibility(View.INVISIBLE);
                 break;
             case INSTALLING:
-                title.setText("Installing U-Streaming Support");
-                message.setText("If asked, choose Install.");
+                title.setText("Step 2 of 2: Install");
+                message.setText("When asked, choose Install.");
                 button.setVisibility(View.INVISIBLE);
                 break;
             case DONE:

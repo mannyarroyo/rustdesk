@@ -350,6 +350,7 @@ class MainActivity : FlutterActivity() {
                     getSharedPreferences(KEY_SHARED_PREFERENCES, MODE_PRIVATE).edit()
                         .putBoolean(KEY_USTREAMING_SETUP_PENDING, true).apply()
                     startAction(activity, "android.settings.ACCESSIBILITY_SETTINGS")
+                    startAccessibilityHints(applicationContext)
                     result.success(true)
                 }
                 START_ACTION -> {
