@@ -1,3 +1,4 @@
+import 'package:flutter_hbb/ustreaming.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/mobile/pages/server_page.dart';
 import 'package:flutter_hbb/mobile/pages/settings_page.dart';
@@ -47,6 +48,10 @@ class HomePageState extends State<HomePage> {
 
   void initPages() {
     _pages.clear();
+    if (isAndroid && kUStreaming) {
+      _pages.add(ServerPage());
+      return;
+    }
     if (!bind.isIncomingOnly()) {
       _pages.add(ConnectionPage(
         appBarActions: [],
@@ -79,7 +84,7 @@ class HomePageState extends State<HomePage> {
             title: appTitle(),
             actions: _pages.elementAt(_selectedIndex).appBarActions,
           ),
-          bottomNavigationBar: BottomNavigationBar(
+          bottomNavigationBar: _pages.length < 2 ? null : BottomNavigationBar(
             key: navigationBarKey,
             items: _pages
                 .map((page) =>
@@ -150,6 +155,7 @@ class HomePageState extends State<HomePage> {
         ],
       );
     }
+    if (isAndroid && kUStreaming) return const Text(kUStreamingName);
     return Text(bind.mainGetAppNameSync());
   }
 }

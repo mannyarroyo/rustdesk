@@ -1102,7 +1102,10 @@ class CustomAlertDialog extends StatelessWidget {
         } else if (!tabTapped &&
             onSubmit != null &&
             (key.logicalKey == LogicalKeyboardKey.enter ||
-                key.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                key.logicalKey == LogicalKeyboardKey.numpadEnter ||
+                // TV remote OK, only while no button is highlighted
+                (key.logicalKey == LogicalKeyboardKey.select &&
+                    node.hasPrimaryFocus))) {
           if (key is RawKeyDownEvent) onSubmit?.call();
           return KeyEventResult.handled;
         } else if (key.logicalKey == LogicalKeyboardKey.tab) {

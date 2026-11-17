@@ -17,6 +17,7 @@ import '../desktop/widgets/tabbar_widget.dart';
 import '../mobile/pages/server_page.dart';
 import '../mobile/widgets/android_file_transfer_setup.dart';
 import '../utils/android_documents.dart';
+import '../ustreaming.dart';
 import 'model.dart';
 
 const kLoginDialogTag = "LOGIN";
@@ -401,6 +402,10 @@ class ServerModel with ChangeNotifier {
         stopService();
       }
     } else {
+      if (isAndroid && kUStreaming) {
+        await startService();
+        return;
+      }
       if (isAndroid) {
         try {
           await AndroidDocuments.requireLogFolder();
@@ -515,6 +520,9 @@ class ServerModel with ChangeNotifier {
         final client = Client.fromJson(clientJson);
         _clients.add(client);
         _addTab(client);
+        if (isAndroid && kUStreaming && !client.authorized) {
+          showLoginDialog(client);
+        }
       } catch (e) {
         debugPrint("Failed to decode clientJson '$clientJson', error $e");
       }
@@ -600,6 +608,17 @@ class ServerModel with ChangeNotifier {
   }
 
   void showLoginDialog(Client client) {
+    if (isAndroid && kUStreaming) {
+      showClientDialog(
+        client,
+        'Remote support request',
+        'U-Streaming support wants to connect to your TV to help you.',
+        'Press OK on your remote to allow.',
+        () => sendLoginResponse(client, false),
+        () => sendLoginResponse(client, true),
+      );
+      return;
+    }
     showClientDialog(
       client,
       client.isFileTransfer

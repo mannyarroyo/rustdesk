@@ -938,6 +938,22 @@ class MainService : Service() {
             // .addAction(R.drawable.close_red, "close", genLoginRequestPendingIntent(false))
             .build()
         notificationManager.notify(getClientNotifyID(clientID), notification)
+        bringAppToFront()
+    }
+
+    // TVs have no notification shade: show the accept prompt on screen.
+    // Starting from the bound accessibility service is allowed while the
+    // app is in the background.
+    private fun bringAppToFront() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        try {
+            (InputService.ctx ?: this).startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(logTag, "bringAppToFront failed: $e")
+        }
     }
 
     private fun onClientAuthorizedNotification(
