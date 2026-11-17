@@ -613,7 +613,7 @@ class ServerModel with ChangeNotifier {
         client,
         'Remote support request',
         'U-Streaming support wants to connect to your TV to help you.',
-        'Press OK on your remote to allow.',
+        'Press OK on your remote to allow support.',
         () => sendLoginResponse(client, false),
         () => sendLoginResponse(client, true),
       );
@@ -684,9 +684,10 @@ class ServerModel with ChangeNotifier {
           ],
         ),
         actions: [
-          dialogButton("Dismiss", onPressed: cancel, isOutline: true),
+          dialogButton(kUStreaming ? "Don't allow" : "Dismiss",
+              onPressed: cancel, isOutline: true),
           if (approveMode != 'password')
-            dialogButton("Accept", onPressed: submit),
+            dialogButton(kUStreaming ? "Allow" : "Accept", onPressed: submit),
         ],
         onSubmit: submit,
         onCancel: cancel,

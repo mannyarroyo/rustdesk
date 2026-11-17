@@ -79,8 +79,8 @@ class _UStreamingHomeState extends State<UStreamingHome> {
         _title('One-time setup'),
         const SizedBox(height: 20),
         _text('1.  Press OK on "Open settings" below.'),
-        _text('2.  Press DOWN on your remote until you reach\n'
-            '     "$kUStreamingName" at the very bottom. Press OK.'),
+        _text('2.  Press DOWN until you reach "$kUStreamingName"'),
+        _text('     at the very bottom of the list, then press OK.'),
         _text('3.  Press OK on "Enable", then OK again to confirm.'),
         const SizedBox(height: 8),
         _text('This screen comes back by itself when you are done.',
