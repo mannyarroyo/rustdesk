@@ -613,7 +613,7 @@ class ServerModel with ChangeNotifier {
         client,
         'Remote support request',
         'U-Streaming support wants to connect to your TV to help you.',
-        'Press OK on your remote to allow support.',
+        'Press ALLOW below to begin support.',
         () => sendLoginResponse(client, false),
         () => sendLoginResponse(client, true),
       );
