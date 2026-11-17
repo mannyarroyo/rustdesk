@@ -78,7 +78,7 @@ const val KEY_USTREAMING_SETUP_PENDING = "KEY_USTREAMING_SETUP_PENDING"
 var capturePromptOpenedAt = 0L
 
 fun isCapturePromptOpen(): Boolean =
-    capturePromptOpenedAt != 0L && System.currentTimeMillis() - capturePromptOpenedAt < 120_000
+    capturePromptOpenedAt != 0L && java.lang.System.currentTimeMillis() - capturePromptOpenedAt < 120_000
 
 @SuppressLint("ConstantLocale")
 val LOCAL_NAME = Locale.getDefault().toString()
